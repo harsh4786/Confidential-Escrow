@@ -16,7 +16,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod confidential_escrow {
 
     use super::*;
-    const ESCROW_PDA_SEED: &[u8] = b"escrow";
+    const ESCROW_PDA_SEED: &[u8] = b"confidential_escrow";
     pub fn initialize_escrow(
         ctx: Context<InitializeEscrow>,
         new_source_decryptable_amount: DecryptableBalance,
