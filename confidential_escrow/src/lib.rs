@@ -135,7 +135,6 @@ pub mod confidential_escrow {
                 ctx.accounts.initializer.clone(),
             ],
             &[&seeds[..]]
-
         )?;
 
         Ok(()) 
@@ -212,9 +211,6 @@ pub struct CancelEscrow<'info>{
 }
 
 
-
-
-
 #[derive(Clone, Copy, Debug)]
 pub struct EncryptedBalance(pod::ElGamalCiphertext);
 
@@ -278,7 +274,6 @@ impl AnchorDeserialize for ElGamalKey{
         Ok(Self(key))
     }
 }*/
-
 
 
 impl AnchorSerialize for DecryptableBalance {
