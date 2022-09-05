@@ -57,8 +57,6 @@ pub mod confidential_escrow {
         let (_pda, bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
         let seeds = &[&ESCROW_PDA_SEED[..], &[bump_seed]];
         
-
-        
         //transferring confidentially from the escrow owned initializer token account to the taker token account
         let ix =  inner_transfer(
             &spl_token_2022::id(),
@@ -250,9 +248,6 @@ pub enum EscrowError {
     InvalidMint,
 
 }
-
-
-
 
 
 
