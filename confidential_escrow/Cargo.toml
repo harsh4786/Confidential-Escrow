@@ -1,0 +1,22 @@
+[package]
+name = "confidential_escrow"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "confidential_escrow"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.25.0"
+spl-token-2022 = {version = "0.4.1", features = ["no-entrypoint"]}
+bytemuck = "1.12.1"
+anchor-spl = "0.25.0"
