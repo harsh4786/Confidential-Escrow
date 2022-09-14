@@ -1,22 +1,23 @@
 use anchor_lang::prelude::*;
 use spl_token_2022::extension::confidential_transfer::{
-    instruction::{inner_transfer}
+    instruction::inner_transfer
 };
 use anchor_lang::solana_program::program::{invoke,invoke_signed};
 use spl_token_2022::instruction::{ AuthorityType as Atype, set_authority};
-//use spl_token_2022::extension::{StateWithExtensions, StateWithExtensionsMut};
-use anchor_spl::token::{Mint, TokenAccount, Token};
+use spl_token_2022::state::{Account as TAccount, Mint};
 use bytemuck;
 use std::{io::{self}, ops::Deref};
-use spl_token_2022::solana_zk_token_sdk::zk_token_elgamal::pod;
+use spl_token_2022::solana_zk_token_sdk::{zk_token_elgamal::pod, instruction::transfer::TransferData};
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
 pub mod confidential_escrow {
 
+    use spl_token_2022::solana_zk_token_sdk::zk_token_proof_instruction::verify_transfer;
+
     use super::*;
-    const ESCROW_PDA_SEED: &[u8] = b"confidential_escrow";
+    const ESCROW_PDA_SEED: &[u8] = b"escrow";
     pub fn initialize_escrow(
         ctx: Context<InitializeEscrow>,
         new_source_decryptable_amount: DecryptableBalance,
@@ -50,13 +51,20 @@ pub mod confidential_escrow {
 
     pub fn exchange(
         ctx: Context<Exchange>,
-        proof_instruction_offset: i8,
+       // proof_instruction_offset: i8,
         taker_proof_instruction_offset: i8,
+        transfer_data: Transferdata,
         taker_decryptable_available_balance: DecryptableBalance,
     ) -> Result<()> {
         let (_pda, bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
         let seeds = &[&ESCROW_PDA_SEED[..], &[bump_seed]];
         
+        // the zk proof has to be generated on the client side and fed to this function
+        //the proof is then verified by invoking the verify_transfer fn of 
+        //the proof program which is a native program....
+
+        verify_transfer(&transfer_data.0);
+
         //transferring confidentially from the escrow owned initializer token account to the taker token account
         let ix =  inner_transfer(
             &spl_token_2022::id(),
@@ -66,7 +74,7 @@ pub mod confidential_escrow {
             ctx.accounts.escrow.initializer_decryptable_available_balance.0,
             &_pda,
             &[],
-            proof_instruction_offset,                            
+            -1,                            
         )?;
         invoke_signed(
             &ix,
@@ -135,6 +143,7 @@ pub mod confidential_escrow {
                 ctx.accounts.initializer.clone(),
             ],
             &[&seeds[..]]
+
         )?;
 
         Ok(()) 
@@ -149,15 +158,16 @@ pub struct InitializeEscrow<'info>{
         space = 8 + std::mem::size_of::<Escrow>()
     )]
     pub escrow: Box<Account<'info, Escrow>>,
-    #[account(mut)]
-    pub initializer_deposit_token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub initializer_receive_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut, constraint = initializer_deposit_token_account.owner == &spl_token_2022::id())]
+    pub initializer_deposit_token_account: AccountInfo<'info>,
+    #[account(mut, constraint = initializer_receive_account.owner == &spl_token_2022::id())]
+    pub initializer_receive_account: AccountInfo<'info>,
 
     #[account(mut)]
     pub initializer: Signer<'info>,
     #[account(executable, address = spl_token_2022::id())]
-    pub token_program: Program<'info, Token>,
+    pub token_program: AccountInfo<'info>,
+    #[account(executable, address = anchor_lang::system_program::ID)]
     pub system_program: Program<'info, System>,
 }
 
@@ -169,17 +179,17 @@ pub struct Exchange<'info>{
     )]
     pub initializer: AccountInfo<'info>,
     #[account(mut)]
-    pub taker_receive_token_account: Box<Account<'info, TokenAccount>>,
+    pub taker_receive_token_account: AccountInfo<'info>,
     #[account(mut)]
-    pub taker_deposit_token_account: Box<Account<'info, TokenAccount>>,
+    pub taker_deposit_token_account: AccountInfo<'info>,
     #[account(mut)]
-    pub initializer_receive_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut)] // the original initializer deposit token account who's authority now is the escrow PDA.
-    pub pda_deposit_token_account: Box<Account<'info, TokenAccount>>,
+    pub initializer_receive_account: AccountInfo<'info>,
+    #[account(mut, constraint = pda_deposit_token_account.owner == &pda_account.key())] // the original initializer deposit token account who's authority now is the escrow PDA.
+    pub pda_deposit_token_account: AccountInfo<'info>,
     #[account(mut)]
-    pub initializer_main_account: AccountInfo<'info>,
-    pub initializer_mint: Account<'info, Mint>,
-    pub taker_mint: Account<'info, Mint>,
+    pub initializer_main_account: AccountInfo<'info>, // the original initializer
+    pub initializer_mint: AccountInfo<'info>,
+    pub taker_mint: AccountInfo<'info>,
     #[account(
         mut,
         constraint = escrow.initializer_deposit_account == *pda_deposit_token_account.to_account_info().key @ EscrowError::InvalidTokenAccount,
@@ -190,15 +200,16 @@ pub struct Exchange<'info>{
         close = initializer_main_account
     )]
     pub escrow: Box<Account<'info, Escrow>>,
-    pub pda_account: AccountInfo<'info>,
-    pub token_program: Program<'info, Token>,
+    pub pda_account: Signer<'info>,
+    #[account(executable, address = spl_token_2022::id())]
+    pub token_program: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
 pub struct CancelEscrow<'info>{
     pub initializer: AccountInfo<'info>,
     #[account(mut)]
-    pub pda_deposit_token_account: Box<Account<'info, TokenAccount>>,
+    pub pda_deposit_token_account: AccountInfo<'info>,
     pub pda_account: AccountInfo<'info>,
     #[account(
         mut,
@@ -207,8 +218,12 @@ pub struct CancelEscrow<'info>{
         close = initializer
     )]
     pub escrow: Box<Account<'info, Escrow>>,
-    pub token_program: Program<'info, Token>,
+    #[account(executable, address = spl_token_2022::id())]
+    pub token_program: AccountInfo<'info>,
 }
+
+
+
 
 
 #[derive(Clone, Copy, Debug)]
@@ -221,6 +236,8 @@ pub struct DecryptableBalance(pod::AeCiphertext);
 #[derive(Clone, Copy, Debug)]
 pub struct ElGamalKey(pod::ElGamalPubkey);
 
+#[derive(Clone, Copy)]
+pub struct Transferdata(TransferData);
 #[account]
 pub struct Escrow {
     pub initializer: Pubkey,
@@ -244,6 +261,9 @@ pub enum EscrowError {
     InvalidMint,
 
 }
+
+
+
 
 
 
@@ -276,6 +296,7 @@ impl AnchorDeserialize for ElGamalKey{
 }*/
 
 
+
 impl AnchorSerialize for DecryptableBalance {
     fn serialize<W: std::io::Write>(&self, w: &mut W) -> io::Result<()>{
         let buf = bytemuck::bytes_of(&self.0);
@@ -293,5 +314,19 @@ impl Deref for DecryptableBalance{
     type Target = pod::AeCiphertext;
     fn deref(&self) -> &Self::Target{
         &self.0
+    }
+}
+
+impl AnchorSerialize for Transferdata {
+    fn serialize<W: std::io::Write>(&self, w: &mut W) -> io::Result<()>{
+        let buf = bytemuck::bytes_of(&self.0);
+        w.write_all(buf)?;
+        Ok(())
+    }
+}
+impl AnchorDeserialize for Transferdata{
+    fn deserialize(buf: &mut &[u8]) -> io::Result<Self> {
+        let data = *bytemuck::try_from_bytes(buf).unwrap();
+        Ok(Self(data))
     }
 }
