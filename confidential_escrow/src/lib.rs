@@ -53,7 +53,8 @@ pub mod confidential_escrow {
         ctx: Context<Exchange>,
        // proof_instruction_offset: i8,
         taker_proof_instruction_offset: i8,
-        transfer_data: Transferdata,
+        initializer_transfer_proof: Transferdata,
+        taker_transfer_proof: Transferdata,
         taker_decryptable_available_balance: DecryptableBalance,
     ) -> Result<()> {
         let (_pda, bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
@@ -63,7 +64,7 @@ pub mod confidential_escrow {
         //the proof is then verified by invoking the verify_transfer fn of 
         //the proof program which is a native program....
 
-        verify_transfer(&transfer_data.0);
+        verify_transfer(&initializer_transfer_proof.0);
 
         //transferring confidentially from the escrow owned initializer token account to the taker token account
         let ix =  inner_transfer(
@@ -85,7 +86,11 @@ pub mod confidential_escrow {
             ],
             &[&seeds[..]]
         )?;
-        // transferring confidentially from the taker token account to the escrow owned initializer's receiving token account
+
+        // verifying the transfer proof provided by the taker.
+        verify_transfer(&taker_transfer_proof.0);
+        // transferring confidentially from the taker token account to the initializer's receiving token account
+
         let ix_ = inner_transfer(
             &spl_token_2022::id(),
             &ctx.accounts.taker_deposit_token_account.to_account_info().key,
