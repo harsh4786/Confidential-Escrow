@@ -1,2 +1,0 @@
-cargo:rustc-env=TYPENUM_BUILD_CONSTS=/home/hersh/Confidential-Escrow/confidential_escrow/target/debug/build/typenum-2bc366e88b66e1df/out/consts.rs
-cargo:rustc-env=TYPENUM_BUILD_OP=/home/hersh/Confidential-Escrow/confidential_escrow/target/debug/build/typenum-2bc366e88b66e1df/out/op.rs
