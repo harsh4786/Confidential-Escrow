@@ -20,6 +20,7 @@ pub mod confidential_escrow {
     const ESCROW_PDA_SEED: &[u8] = b"escrow";
     pub fn initialize_escrow(
         ctx: Context<InitializeEscrow>,
+        initializer_transfer_proof: Transferdata,
         new_source_decryptable_amount: DecryptableBalance,
         taker_amount: EncryptedBalance,
     ) -> Result<()> {
@@ -250,7 +251,7 @@ pub struct Escrow {
     pub taker_mint: Pubkey,
     pub initializer_deposit_account: Pubkey,
     pub initializer_receive_account: Pubkey,
-    //pub initializer_amount: EncryptedBalance,
+    pub initializer_transfer_proof: Transferdata,
     pub initializer_decryptable_available_balance: DecryptableBalance,
     pub taker_amount: EncryptedBalance,
 }
