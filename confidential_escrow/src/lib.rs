@@ -54,7 +54,6 @@ pub mod confidential_escrow {
         ctx: Context<Exchange>,
        // proof_instruction_offset: i8,
         taker_proof_instruction_offset: i8,
-        initializer_transfer_proof: Transferdata,
         taker_transfer_proof: Transferdata,
         taker_decryptable_available_balance: DecryptableBalance,
     ) -> Result<()> {
@@ -64,7 +63,7 @@ pub mod confidential_escrow {
         // the zk proof has to be generated on the client side and fed to this function
         //the proof is then verified by invoking the verify_transfer fn of 
         //the proof program which is a native program....
-
+        let initializer_transfer_proof = &ctx.accounts.escrow.initializer_transfer_proof;
         verify_transfer(&initializer_transfer_proof.0);
 
         //transferring confidentially from the escrow owned initializer token account to the taker token account
