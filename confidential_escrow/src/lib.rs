@@ -7,14 +7,12 @@ use spl_token_2022::instruction::{ AuthorityType as Atype, set_authority};
 use bytemuck;
 use std::{io::{self}, ops::Deref};
 use spl_token_2022::solana_zk_token_sdk::{zk_token_elgamal::pod, instruction::transfer::TransferData};
+use spl_token_2022::solana_zk_token_sdk::zk_token_proof_instruction::verify_transfer;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
 pub mod confidential_escrow {
-
-    use spl_token_2022::solana_zk_token_sdk::zk_token_proof_instruction::verify_transfer;
-
     use super::*;
     const ESCROW_PDA_SEED: &[u8] = b"escrow";
     pub fn initialize_escrow(
