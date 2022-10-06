@@ -4,7 +4,6 @@ use spl_token_2022::extension::confidential_transfer::{
 };
 use anchor_lang::solana_program::program::{invoke,invoke_signed};
 use spl_token_2022::instruction::{ AuthorityType as Atype, set_authority};
-use spl_token_2022::state::{Account as TAccount, Mint};
 use bytemuck;
 use std::{io::{self}, ops::Deref};
 use spl_token_2022::solana_zk_token_sdk::{zk_token_elgamal::pod, instruction::transfer::TransferData};
@@ -29,6 +28,7 @@ pub mod confidential_escrow {
         ctx.accounts.escrow.initializer_deposit_account = *ctx.accounts.initializer_deposit_token_account.to_account_info().key;
         ctx.accounts.escrow.initializer_decryptable_available_balance = new_source_decryptable_amount;
         ctx.accounts.escrow.taker_amount = taker_amount;
+        ctx.accounts.escrow.initializer_transfer_proof = initializer_transfer_proof;
 
         let (pda, _bump_seed) = Pubkey::find_program_address(&[ESCROW_PDA_SEED], ctx.program_id);
         let ix = set_authority(
